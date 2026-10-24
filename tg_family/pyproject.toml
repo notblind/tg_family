@@ -1,0 +1,15 @@
+[project]
+name = "tg_family"
+version = "0.1.0"
+description = "Personal Telegram bot for reviews and reminders"
+requires-python = ">=3.12"
+dependencies = [
+    "aiogram>=3.31.0",
+    "aiosqlite>=0.22.1",
+    "alembic>=1.20.1",
+    "apscheduler>=3.11.3",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy>=2.0.55",
+    "greenlet>=3.0.0",
+]
