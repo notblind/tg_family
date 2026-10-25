@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from config import settings
 from database.models import Base
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 # Ensure database directory exists
 db_path = Path(settings.database_path)
@@ -22,6 +23,7 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
 
 
-async def get_session() -> AsyncSession:
+@asynccontextmanager
+async def get_session():
     async with async_session() as session:
         yield session

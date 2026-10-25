@@ -200,3 +200,60 @@ async def cmd_pill_log(message: types.Message):
         text += f"{status} {log.pill.name} - {log.taken_at.strftime('%d.%m %H:%M')}\n"
     
     await message.answer(text)
+
+
+@router.callback_query(F.data.startswith("pill_taken_"))
+async def callback_pill_taken(callback: types.CallbackQuery):
+    pill_id = int(callback.data.split("_")[2])
+    
+    async with get_session() as session:
+        from sqlalchemy import select
+        result = await session.execute(select(Pill).where(Pill.id == pill_id))
+        pill = result.scalar_one_or_none()
+        
+        if pill:
+            log = PillLog(pill_id=pill_id, is_taken=True)
+            session.add(log)
+            await session.commit()
+            await callback.message.edit_text(f"✅ Записано: {pill.name} принят")
+        else:
+            await callback.message.edit_text("Ошибка: напоминание не найдено")
+    
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("pill_postpone_"))
+async def callback_pill_postpone(callback: types.CallbackQuery):
+    pill_id = int(callback.data.split("_")[2])
+    
+    async with get_session() as session:
+        from sqlalchemy import select
+        result = await session.execute(select(Pill).where(Pill.id == pill_id))
+        pill = result.scalar_one_or_none()
+        
+        if pill:
+            from config import settings
+            interval = settings.pill_reminder_interval
+            
+            # Schedule reminder after interval
+            from scheduler.scheduler import scheduler
+            from scheduler.jobs import check_pill_reminders
+            from datetime import datetime, timedelta
+            
+            reminder_time = (datetime.now() + timedelta(minutes=interval)).strftime("%H:%M")
+            
+            scheduler.add_job(
+                check_pill_reminders,
+                'date',
+                run_date=datetime.now() + timedelta(minutes=interval),
+                id=f"pill_postpone_{pill_id}_{datetime.now().timestamp()}",
+                replace_existing=True
+            )
+            
+            await callback.message.edit_text(
+                f"⏰ Напоминание отложено на {interval} минут ({reminder_time})"
+            )
+        else:
+            await callback.message.edit_text("Ошибка: напоминание не найдено")
+    
+    await callback.answer()

@@ -2,7 +2,6 @@ from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, date
 from database.session import get_session
 from database.models import Birthday, BirthdayCategory
@@ -99,7 +98,7 @@ async def cmd_birthdays(message: types.Message):
             text += f" ({b.note})"
         text += "\n"
     
-    await message.answer(text)
+    await message.answer(text, parse_mode="HTML")
 
 
 @router.message(F.text == "/upcoming_birthdays")

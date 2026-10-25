@@ -1,6 +1,6 @@
 from datetime import datetime, date, timedelta
 from sqlalchemy import select
-from database.session import async_session
+from database.session import get_session
 from database.models import Birthday, Task, Pill
 from config import settings
 import json
@@ -27,7 +27,7 @@ async def check_birthdays_monthly():
     next_month = today + timedelta(days=32)
     next_month = next_month.replace(day=1)
     
-    async with async_session() as session:
+    async with get_session() as session:
         result = await session.execute(select(Birthday))
         birthdays = result.scalars().all()
     
@@ -62,7 +62,7 @@ async def check_task_deadlines():
     today = datetime.now()
     tomorrow = today + timedelta(days=1)
     
-    async with async_session() as session:
+    async with get_session() as session:
         result = await session.execute(
             select(Task).where(
                 Task.is_completed == False,
@@ -105,7 +105,7 @@ async def check_pill_reminders():
     current_time = now.strftime("%H:%M")
     current_day = now.weekday()  # 0 = Monday, 6 = Sunday
     
-    async with async_session() as session:
+    async with get_session() as session:
         result = await session.execute(
             select(Pill).where(
                 Pill.reminder_time == current_time

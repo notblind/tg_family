@@ -32,7 +32,8 @@ async def main():
     enable_wal_mode()
 
     # Start scheduler
-    scheduler.start()
+    from scheduler.scheduler import init_scheduler
+    await init_scheduler()
 
     # Register handlers
     dp.include_router(base.router)
@@ -44,7 +45,8 @@ async def main():
     try:
         await dp.start_polling(bot)
     finally:
-        scheduler.shutdown()
+        from scheduler.scheduler import shutdown_scheduler
+        shutdown_scheduler()
         await bot.session.close()
 
 
