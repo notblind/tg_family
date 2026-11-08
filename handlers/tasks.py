@@ -11,53 +11,58 @@ router = Router()
 
 
 class TaskStates(StatesGroup):
-    text = State()
-    deadline = State()
+    add_task = State()
 
 
 @router.message(F.text == "/add_task")
 async def cmd_add_task(message: types.Message, state: FSMContext):
-    await message.answer("Введите описание задачи:")
-    await state.set_state(TaskStates.text)
-
-
-@router.message(TaskStates.text)
-async def process_task_text(message: types.Message, state: FSMContext):
-    await state.update_data(text=message.text)
     await message.answer(
-        "Введите дедлайн в формате ДД.ММ ЧЧ:ММ (например, 25.10 18:00), "
-        "или отправьте /skip если дедлайна нет:"
+        "Введите задачу в формате:\n"
+        "Текст задачи - ДД.ММ ЧЧ:ММ\n\n"
+        "Пример: Купить продукты - 25.10 18:00\n\n"
+        "Если дедлайна нет, просто введите текст задачи."
     )
-    await state.set_state(TaskStates.deadline)
+    await state.set_state(TaskStates.add_task)
 
 
-@router.message(TaskStates.deadline)
-async def process_task_deadline(message: types.Message, state: FSMContext):
-    if message.text == "/skip":
-        deadline = None
-    else:
-        try:
-            deadline = datetime.strptime(message.text, "%d.%m %H:%M")
-            # Set year to current year
-            deadline = deadline.replace(year=datetime.now().year)
-        except ValueError:
-            await message.answer("Неверный формат. Используйте ДД.ММ ЧЧ:ММ (например, 25.10 18:00):")
-            return
-    
-    await state.update_data(deadline=deadline)
-    data = await state.get_data()
-    
-    async with get_session() as session:
-        task = Task(
-            text=data['text'],
-            deadline=deadline
+@router.message(TaskStates.add_task)
+async def process_add_task(message: types.Message, state: FSMContext):
+    try:
+        # Check if there's a deadline
+        if ' - ' in message.text:
+            parts = message.text.split(' - ')
+            text = parts[0].strip()
+            deadline_str = parts[1].strip()
+            
+            try:
+                deadline = datetime.strptime(deadline_str, "%d.%m %H:%M")
+                deadline = deadline.replace(year=datetime.now().year)
+            except ValueError:
+                await message.answer(
+                    "Неверный формат дедлайна. Используйте ДД.ММ ЧЧ:ММ\n\n"
+                    "Пример: Купить продукты - 25.10 18:00"
+                )
+                return
+        else:
+            text = message.text.strip()
+            deadline = None
+        
+        async with get_session() as session:
+            task = Task(
+                text=text,
+                deadline=deadline
+            )
+            session.add(task)
+            await session.commit()
+        
+        deadline_text = deadline.strftime("%d.%m %H:%M") if deadline else "без дедлайна"
+        await message.answer(f"✅ Задача добавлена: {text} (дедлайн: {deadline_text})")
+        await state.clear()
+    except Exception as e:
+        await message.answer(
+            "Неверный формат. Используйте: Текст задачи - ДД.ММ ЧЧ:ММ\n\n"
+            "Или просто текст задачи без дедлайна."
         )
-        session.add(task)
-        await session.commit()
-    
-    deadline_text = deadline.strftime("%d.%m %H:%M") if deadline else "без дедлайна"
-    await message.answer(f"✅ Задача добавлена: {data['text']} (дедлайн: {deadline_text})")
-    await state.clear()
 
 
 @router.message(F.text == "/tasks")

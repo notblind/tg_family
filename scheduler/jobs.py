@@ -1,7 +1,7 @@
 from datetime import datetime, date, timedelta
 from sqlalchemy import select
 from database.session import get_session
-from database.models import Birthday, Task, Pill
+from database.models import Birthday, Task, Pill, NotificationSettings
 from config import settings
 import json
 import logging
@@ -41,14 +41,21 @@ async def check_birthdays_monthly():
         text = f"🎂 Дни рождения в {next_month.strftime('%B')}:\n\n"
         
         for b in next_month_birthdays:
-            category_emoji = "👨‍👩‍👧‍👦" if b.category.value == "family" else "👥"
-            text += f"{category_emoji} {b.name} - {b.date.strftime('%d.%m')}"
-            if b.note:
-                text += f" ({b.note})"
-            text += "\n"
+            text += f"🎂 {b.name} - {b.date.strftime('%d.%m')}\n"
         
         for admin_id in admin_ids:
-            await bot.send_message(admin_id, text)
+            # Check user notification settings
+            async with get_session() as session:
+                result = await session.execute(
+                    select(NotificationSettings).where(NotificationSettings.user_id == admin_id)
+                )
+                user_settings = result.scalar_one_or_none()
+            
+            if user_settings and not user_settings.birthdays_notification:
+                # Send silently if notifications disabled
+                await bot.send_message(admin_id, text, disable_notification=True)
+            else:
+                await bot.send_message(admin_id, text)
     
     await bot.session.close()
     logger.info(f"Sent birthday reminders for {next_month.strftime('%B')}")
@@ -78,17 +85,45 @@ async def check_task_deadlines():
             if task.deadline.date() == today.date():
                 # Deadline is today
                 for admin_id in admin_ids:
-                    await bot.send_message(
-                        admin_id,
-                        f"⚠️ Дедлайн сегодня: {task.text} ({task.deadline.strftime('%H:%M')})"
-                    )
+                    # Check user notification settings
+                    async with get_session() as session:
+                        result = await session.execute(
+                            select(NotificationSettings).where(NotificationSettings.user_id == admin_id)
+                        )
+                        user_settings = result.scalar_one_or_none()
+                    
+                    if user_settings and not user_settings.tasks_notification:
+                        await bot.send_message(
+                            admin_id,
+                            f"⚠️ Дедлайн сегодня: {task.text} ({task.deadline.strftime('%H:%M')})",
+                            disable_notification=True
+                        )
+                    else:
+                        await bot.send_message(
+                            admin_id,
+                            f"⚠️ Дедлайн сегодня: {task.text} ({task.deadline.strftime('%H:%M')})"
+                        )
             elif task.deadline.date() == tomorrow.date():
                 # Deadline is tomorrow
                 for admin_id in admin_ids:
-                    await bot.send_message(
-                        admin_id,
-                        f"📌 Дедлайн завтра: {task.text} ({task.deadline.strftime('%d.%m %H:%M')})"
-                    )
+                    # Check user notification settings
+                    async with get_session() as session:
+                        result = await session.execute(
+                            select(NotificationSettings).where(NotificationSettings.user_id == admin_id)
+                        )
+                        user_settings = result.scalar_one_or_none()
+                    
+                    if user_settings and not user_settings.tasks_notification:
+                        await bot.send_message(
+                            admin_id,
+                            f"📌 Дедлайн завтра: {task.text} ({task.deadline.strftime('%d.%m %H:%M')})",
+                            disable_notification=True
+                        )
+                    else:
+                        await bot.send_message(
+                            admin_id,
+                            f"📌 Дедлайн завтра: {task.text} ({task.deadline.strftime('%d.%m %H:%M')})"
+                        )
     
     await bot.session.close()
     logger.info("Checked task deadlines")
@@ -131,11 +166,26 @@ async def check_pill_reminders():
         keyboard.adjust(2)
         
         for admin_id in admin_ids:
-            await bot.send_message(
-                admin_id,
-                f"💊 Пора принять: {pill.name}",
-                reply_markup=keyboard.as_markup()
-            )
+            # Check user notification settings
+            async with get_session() as session:
+                result = await session.execute(
+                    select(NotificationSettings).where(NotificationSettings.user_id == admin_id)
+                )
+                user_settings = result.scalar_one_or_none()
+            
+            if user_settings and not user_settings.pills_notification:
+                await bot.send_message(
+                    admin_id,
+                    f"💊 Пора принять: {pill.name}",
+                    reply_markup=keyboard.as_markup(),
+                    disable_notification=True
+                )
+            else:
+                await bot.send_message(
+                    admin_id,
+                    f"💊 Пора принять: {pill.name}",
+                    reply_markup=keyboard.as_markup()
+                )
     
     await bot.session.close()
     logger.info("Checked pill reminders")

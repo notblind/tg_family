@@ -12,7 +12,7 @@ from database.session import init_db
 from database.init_db import enable_wal_mode
 from middlewares.whitelist import WhitelistMiddleware
 from scheduler.scheduler import scheduler
-from handlers import base, birthdays, tasks, pills
+from handlers import base, birthdays, tasks, pills, settings as settings_handler
 
 
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +40,7 @@ async def main():
     dp.include_router(birthdays.router)
     dp.include_router(tasks.router)
     dp.include_router(pills.router)
+    dp.include_router(settings_handler.router)
 
     logger.info("Bot started")
     try:

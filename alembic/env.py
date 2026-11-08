@@ -5,10 +5,10 @@ import sys
 from pathlib import Path
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tg_family.database.models import Base
-from tg_family.config import settings
+from database.models import Base
+from config import settings
 
 # this is the Alembic Config object
 config = context.config

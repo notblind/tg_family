@@ -30,19 +30,12 @@ class Review(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class BirthdayCategory(str, enum.Enum):
-    FAMILY = "family"
-    FRIENDS = "friends"
-
-
 class Birthday(Base):
     __tablename__ = "birthdays"
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     date = Column(DateTime, nullable=False)  # birthday date
-    category = Column(Enum(BirthdayCategory), default=BirthdayCategory.FAMILY)
-    note = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -79,3 +72,15 @@ class PillLog(Base):
     taken_at = Column(DateTime, default=datetime.utcnow)
     is_taken = Column(Boolean, default=True)
     pill = relationship("Pill", backref="logs")
+
+
+class NotificationSettings(Base):
+    __tablename__ = "notification_settings"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, unique=True, nullable=False)  # Telegram ID
+    birthdays_notification = Column(Boolean, default=True)
+    tasks_notification = Column(Boolean, default=True)
+    pills_notification = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

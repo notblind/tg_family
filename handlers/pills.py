@@ -12,148 +12,74 @@ router = Router()
 
 
 class PillStates(StatesGroup):
-    name = State()
-    reminder_time = State()
-    days_of_week = State()
-    duration = State()
-    end_date = State()
+    add_pill = State()
 
 
 @router.message(F.text == "/add_pill")
 async def cmd_add_pill(message: types.Message, state: FSMContext):
-    await message.answer("Введите название лекарства:")
-    await state.set_state(PillStates.name)
-
-
-@router.message(PillStates.name)
-async def process_pill_name(message: types.Message, state: FSMContext):
-    await state.update_data(name=message.text)
-    await message.answer("Введите время приёма в формате ЧЧ:ММ (например, 09:00):")
-    await state.set_state(PillStates.reminder_time)
-
-
-@router.message(PillStates.reminder_time)
-async def process_pill_reminder_time(message: types.Message, state: FSMContext):
-    try:
-        datetime.strptime(message.text, "%H:%M")
-        await state.update_data(reminder_time=message.text)
-        
-        keyboard = InlineKeyboardBuilder()
-        days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-        for i, day in enumerate(days):
-            keyboard.button(text=day, callback_data=f"day_{i}")
-        keyboard.button(text="Готово", callback_data="days_done")
-        keyboard.adjust(4)
-        
-        await message.answer(
-            "Выберите дни недели для приёма (можно выбрать несколько, затем нажмите 'Готово'):",
-            reply_markup=keyboard.as_markup()
-        )
-        await state.set_state(PillStates.days_of_week)
-    except ValueError:
-        await message.answer("Неверный формат времени. Используйте ЧЧ:ММ (например, 09:00):")
-
-
-@router.callback_query(PillStates.days_of_week, F.data.startswith("day_"))
-async def process_pill_day(callback: types.CallbackQuery, state: FSMContext):
-    day_index = int(callback.data.split("_")[1])
-    data = await state.get_data()
-    selected_days = data.get("selected_days", [])
-    
-    if day_index in selected_days:
-        selected_days.remove(day_index)
-    else:
-        selected_days.append(day_index)
-    
-    await state.update_data(selected_days=selected_days)
-    await callback.answer()
-
-
-@router.callback_query(PillStates.days_of_week, F.data == "days_done")
-async def process_pill_days_done(callback: types.CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    selected_days = data.get("selected_days", [])
-    
-    if not selected_days:
-        await callback.message.answer("Выберите хотя бы один день недели")
-        await callback.answer()
-        return
-    
-    await state.update_data(days_of_week=json.dumps(selected_days))
-    
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="Бессрочно", callback_data="duration_indefinite")
-    keyboard.button(text="Указать дату окончания", callback_data="duration_limited")
-    
-    await callback.message.answer("Выберите длительность курса:", reply_markup=keyboard.as_markup())
-    await state.set_state(PillStates.duration)
-    await callback.answer()
-
-
-@router.callback_query(PillStates.duration, F.data == "duration_indefinite")
-async def process_pill_duration_indefinite(callback: types.CallbackQuery, state: FSMContext):
-    await state.update_data(is_indefinite=True, end_date=None)
-    data = await state.get_data()
-    
-    async with get_session() as session:
-        pill = Pill(
-            name=data['name'],
-            reminder_time=data['reminder_time'],
-            days_of_week=data['days_of_week'],
-            is_indefinite=True
-        )
-        session.add(pill)
-        await session.commit()
-    
-    days_map = {0: "Пн", 1: "Вт", 2: "Ср", 3: "Чт", 4: "Пт", 5: "Сб", 6: "Вс"}
-    selected_days_names = [days_map[i] for i in json.loads(data['days_of_week'])]
-    
-    await callback.message.answer(
-        f"✅ Напоминание добавлено: {data['name']} в {data['reminder_time']}\n"
-        f"Дни: {', '.join(selected_days_names)}\n"
-        f"Бессрочно"
+    await message.answer(
+        "Введите напоминание в формате:\n"
+        "Название - ЧЧ:ММ - Дни недели\n\n"
+        "Пример: Витамин C - 09:00 - Пн Вт Ср Чт Пт Сб\n\n"
+        "Дни недели: Пн Вт Ср Чт Пт Сб Вс (через пробел)"
     )
-    await state.clear()
-    await callback.answer()
+    await state.set_state(PillStates.add_pill)
 
 
-@router.callback_query(PillStates.duration, F.data == "duration_limited")
-async def process_pill_duration_limited(callback: types.CallbackQuery, state: FSMContext):
-    await state.update_data(is_indefinite=False)
-    await callback.message.answer("Введите дату окончания в формате ДД.ММ.ГГГГ (например, 25.12.2026):")
-    await state.set_state(PillStates.end_date)
-    await callback.answer()
-
-
-@router.message(PillStates.end_date)
-async def process_pill_end_date(message: types.Message, state: FSMContext):
+@router.message(PillStates.add_pill)
+async def process_add_pill(message: types.Message, state: FSMContext):
     try:
-        end_date = datetime.strptime(message.text, "%d.%m.%Y").date()
-        await state.update_data(end_date=end_date)
-        data = await state.get_data()
+        parts = message.text.split(' - ')
+        if len(parts) < 3:
+            await message.answer(
+                "Неверный формат. Используйте: Название - ЧЧ:ММ - Дни недели\n\n"
+                "Пример: Витамин C - 09:00 - Пн Вт Ср Чт Пт Сб"
+            )
+            return
+        
+        name = parts[0].strip()
+        time_str = parts[1].strip()
+        days_str = parts[2].strip()
+        
+        # Parse time
+        datetime.strptime(time_str, "%H:%M")
+        
+        # Parse days
+        day_map = {
+            "Пн": 0, "Вт": 1, "Ср": 2, "Чт": 3, "Пт": 4, "Сб": 5, "Вс": 6
+        }
+        days_input = days_str.split()
+        days_of_week = []
+        
+        for day in days_input:
+            if day in day_map:
+                days_of_week.append(day_map[day])
+        
+        if not days_of_week:
+            await message.answer("Укажите хотя бы один день недели")
+            return
         
         async with get_session() as session:
             pill = Pill(
-                name=data['name'],
-                reminder_time=data['reminder_time'],
-                days_of_week=data['days_of_week'],
-                is_indefinite=False,
-                end_date=end_date
+                name=name,
+                reminder_time=time_str,
+                days_of_week=json.dumps(days_of_week),
+                is_indefinite=True
             )
             session.add(pill)
             await session.commit()
         
-        days_map = {0: "Пн", 1: "Вт", 2: "Ср", 3: "Чт", 4: "Пт", 5: "Сб", 6: "Вс"}
-        selected_days_names = [days_map[i] for i in json.loads(data['days_of_week'])]
-        
-        await message.answer(
-            f"✅ Напоминание добавлено: {data['name']} в {data['reminder_time']}\n"
-            f"Дни: {', '.join(selected_days_names)}\n"
-            f"До {end_date.strftime('%d.%m.%Y')}"
-        )
+        await message.answer(f"✅ Напоминание добавлено: {name} в {time_str}")
         await state.clear()
     except ValueError:
-        await message.answer("Неверный формат даты. Используйте ДД.ММ.ГГГГ (например, 25.12.2026):")
+        await message.answer(
+            "Неверный формат времени. Используйте ЧЧ:ММ (например, 09:00)"
+        )
+    except Exception as e:
+        await message.answer(
+            "Неверный формат. Используйте: Название - ЧЧ:ММ - Дни недели\n\n"
+            "Пример: Витамин C - 09:00 - Пн Вт Ср Чт Пт Сб"
+        )
 
 
 @router.message(F.text == "/pills")
