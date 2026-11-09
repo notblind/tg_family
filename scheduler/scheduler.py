@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 # APScheduler doesn't support async drivers for job stores
 jobstore_url = settings.database_url
 if jobstore_url.startswith("postgresql+asyncpg://"):
-    jobstore_url = jobstore_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+    jobstore_url = jobstore_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+elif jobstore_url.startswith("postgresql://"):
+    jobstore_url = jobstore_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 # Configure job store
 jobstores = {
