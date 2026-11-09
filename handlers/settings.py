@@ -301,6 +301,27 @@ async def callback_menu_add_pill(callback: types.CallbackQuery, state: FSMContex
     await callback.answer()
 
 
+@router.callback_query(F.data == "cancel_add_birthday")
+async def cancel_add_birthday(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.answer("❌ Добавление дня рождения отменено")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "cancel_add_task")
+async def cancel_add_task(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.answer("❌ Добавление задачи отменено")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "cancel_add_pill")
+async def cancel_add_pill(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.answer("❌ Добавление напоминания отменено")
+    await callback.answer()
+
+
 @router.message(PillStates.add_pill)
 async def process_add_pill_from_menu(message: types.Message, state: FSMContext):
     from handlers.pills import process_add_pill
