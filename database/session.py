@@ -7,6 +7,8 @@ from contextlib import asynccontextmanager
 db_url = settings.database_url
 if db_url.startswith("postgresql://"):
     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("sqlite:///"):
+    db_url = db_url.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
 
 engine = create_async_engine(
     db_url,
