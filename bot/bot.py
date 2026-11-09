@@ -8,8 +8,6 @@ from aiogram import Bot, Dispatcher
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import settings
-from database.session import init_db
-from database.init_db import enable_wal_mode
 from middlewares.whitelist import WhitelistMiddleware
 from scheduler.scheduler import scheduler
 from handlers import base, birthdays, tasks, pills, settings as settings_handler
@@ -26,10 +24,6 @@ async def main():
     # Setup whitelist middleware
     dp.message.middleware(WhitelistMiddleware())
     dp.callback_query.middleware(WhitelistMiddleware())
-
-    # Initialize database
-    await init_db()
-    enable_wal_mode()
 
     # Start scheduler
     from scheduler.scheduler import init_scheduler

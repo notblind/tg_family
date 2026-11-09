@@ -18,8 +18,16 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Set the database URL from settings
-# For alembic we use absolute path since it runs in a different context
-config.set_main_option("sqlalchemy.url", f"sqlite:///data/tg_family.db")
+import os
+db_url = os.getenv("DATABASE_URL")
+if db_url:
+    # Replace postgresql:// with postgresql+asyncpg:// for async
+    if db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    config.set_main_option("sqlalchemy.url", db_url)
+else:
+    # Fallback to SQLite for local development
+    config.set_main_option("sqlalchemy.url", "sqlite:///data/tg_family.db")
 
 # add your model's MetaData object here
 target_metadata = Base.metadata

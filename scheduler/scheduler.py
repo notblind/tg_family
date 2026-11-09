@@ -8,9 +8,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Support both PostgreSQL and SQLite for job store
+db_url = settings.database_url
+if db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 # Configure job store
 jobstores = {
-    "default": SQLAlchemyJobStore(url=f"sqlite:///{settings.database_path}")
+    "default": SQLAlchemyJobStore(url=db_url)
 }
 
 # Configure executor

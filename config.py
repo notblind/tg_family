@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     admin_ids: Union[str, List[int]] = Field(default="", alias="ADMIN_IDS")
     channel_id: int = Field(..., alias="CHANNEL_ID")
     timezone: str = Field(default="Europe/Belgrade", alias="TIMEZONE")
-    database_path: str = Field(default="data/tg_family.db", alias="DATABASE_PATH")
+    database_url: str = Field(..., alias="DATABASE_URL")
     pill_reminder_interval: int = Field(default=15, alias="PILL_REMINDER_INTERVAL")
 
     @property
