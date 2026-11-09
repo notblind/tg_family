@@ -21,9 +21,13 @@ if config.config_file_name is not None:
 import os
 db_url = os.getenv("DATABASE_URL")
 if db_url:
-    # Replace postgresql:// with postgresql+asyncpg:// for async
+    # Use synchronous driver for Alembic migrations
     if db_url.startswith("postgresql://"):
-        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    elif db_url.startswith("postgresql+asyncpg://"):
+        db_url = db_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+    elif db_url.startswith("sqlite+aiosqlite://"):
+        db_url = db_url.replace("sqlite+aiosqlite://", "sqlite://", 1)
     config.set_main_option("sqlalchemy.url", db_url)
 else:
     # Fallback to SQLite for local development
