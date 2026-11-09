@@ -19,8 +19,12 @@ class PillStates(StatesGroup):
 async def cmd_add_pill(message: types.Message, state: FSMContext):
     await message.answer(
         "Введите напоминание в формате:\n"
+        "Название - ЧЧ:ММ\n"
+        "или\n"
         "Название - ЧЧ:ММ - Дни недели\n\n"
-        "Пример: Витамин C - 09:00 - Пн Вт Ср Чт Пт Сб\n\n"
+        "Примеры:\n"
+        "Витамин C - 09:00 (ежедневно)\n"
+        "Витамин C - 09:00 - Пн Вт Ср Чт Пт (рабочие дни)\n\n"
         "Дни недели: Пн Вт Ср Чт Пт Сб Вс (через пробел)"
     )
     await state.set_state(PillStates.add_pill)
@@ -30,35 +34,40 @@ async def cmd_add_pill(message: types.Message, state: FSMContext):
 async def process_add_pill(message: types.Message, state: FSMContext):
     try:
         parts = message.text.split(' - ')
-        if len(parts) < 3:
+        if len(parts) < 2:
             await message.answer(
-                "Неверный формат. Используйте: Название - ЧЧ:ММ - Дни недели\n\n"
-                "Пример: Витамин C - 09:00 - Пн Вт Ср Чт Пт Сб"
+                "Неверный формат. Используйте: Название - ЧЧ:ММ\n"
+                "или Название - ЧЧ:ММ - Дни недели\n\n"
+                "Примеры:\n"
+                "Витамин C - 09:00 (ежедневно)\n"
+                "Витамин C - 09:00 - Пн Вт Ср Чт Пт (рабочие дни)"
             )
             return
-        
+
         name = parts[0].strip()
         time_str = parts[1].strip()
-        days_str = parts[2].strip()
-        
+
         # Parse time
         datetime.strptime(time_str, "%H:%M")
-        
-        # Parse days
+
+        # Parse days (optional)
         day_map = {
             "Пн": 0, "Вт": 1, "Ср": 2, "Чт": 3, "Пт": 4, "Сб": 5, "Вс": 6
         }
-        days_input = days_str.split()
         days_of_week = []
-        
-        for day in days_input:
-            if day in day_map:
-                days_of_week.append(day_map[day])
-        
+
+        if len(parts) >= 3:
+            days_str = parts[2].strip()
+            days_input = days_str.split()
+
+            for day in days_input:
+                if day in day_map:
+                    days_of_week.append(day_map[day])
+
+        # If no days specified, assume daily (all days)
         if not days_of_week:
-            await message.answer("Укажите хотя бы один день недели")
-            return
-        
+            days_of_week = [0, 1, 2, 3, 4, 5, 6]  # All days
+
         async with get_session() as session:
             pill = Pill(
                 name=name,
@@ -68,8 +77,14 @@ async def process_add_pill(message: types.Message, state: FSMContext):
             )
             session.add(pill)
             await session.commit()
-        
-        await message.answer(f"✅ Напоминание добавлено: {name} в {time_str}")
+
+        days_count = len(days_of_week)
+        if days_count == 7:
+            days_text = "ежедневно"
+        else:
+            days_text = f"{days_count} дн. в неделю"
+
+        await message.answer(f"✅ Напоминание добавлено: {name} в {time_str} ({days_text})")
         await state.clear()
     except ValueError:
         await message.answer(
@@ -77,8 +92,11 @@ async def process_add_pill(message: types.Message, state: FSMContext):
         )
     except Exception as e:
         await message.answer(
-            "Неверный формат. Используйте: Название - ЧЧ:ММ - Дни недели\n\n"
-            "Пример: Витамин C - 09:00 - Пн Вт Ср Чт Пт Сб"
+            "Неверный формат. Используйте: Название - ЧЧ:ММ\n"
+            "или Название - ЧЧ:ММ - Дни недели\n\n"
+            "Примеры:\n"
+            "Витамин C - 09:00 (ежедневно)\n"
+            "Витамин C - 09:00 - Пн Вт Ср Чт Пт (рабочие дни)"
         )
 
 

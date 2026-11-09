@@ -184,8 +184,7 @@ async def callback_menu_add_birthday(callback: types.CallbackQuery, state: FSMCo
     await callback.message.answer(
         "Введите день рождения в формате:\n"
         "Имя - ДД.ММ\n\n"
-        "Пример: Иван - 15.05\n\n"
-        "Категория и заметка можно пропустить."
+        "Пример: Иван - 15.05"
     )
     await state.set_state(BirthdayStates.add_birthday)
     await callback.answer()
@@ -275,8 +274,12 @@ async def cmd_pills_menu(message: types.Message):
 async def callback_menu_add_pill(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
         "Введите напоминание в формате:\n"
+        "Название - ЧЧ:ММ\n"
+        "или\n"
         "Название - ЧЧ:ММ - Дни недели\n\n"
-        "Пример: Витамин C - 09:00 - Пн Вт Ср Чт Пт Сб\n\n"
+        "Примеры:\n"
+        "Витамин C - 09:00 (ежедневно)\n"
+        "Витамин C - 09:00 - Пн Вт Ср Чт Пт (рабочие дни)\n\n"
         "Дни недели: Пн Вт Ср Чт Пт Сб Вс (через пробел)"
     )
     await state.set_state(PillStates.add_pill)
