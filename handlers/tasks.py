@@ -16,13 +16,25 @@ class TaskStates(StatesGroup):
 
 @router.message(F.text == "/add_task")
 async def cmd_add_task(message: types.Message, state: FSMContext):
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="❌ Отмена", callback_data="cancel_add_task")
+    keyboard.adjust(1)
+
     await message.answer(
         "Введите задачу в формате:\n"
         "Текст задачи - ДД.ММ ЧЧ:ММ\n\n"
         "Пример: Купить продукты - 25.10 18:00\n\n"
-        "Если дедлайна нет, просто введите текст задачи."
+        "Если дедлайна нет, просто введите текст задачи.",
+        reply_markup=keyboard.as_markup()
     )
     await state.set_state(TaskStates.add_task)
+
+
+@router.callback_query(F.data == "cancel_add_task")
+async def cancel_add_task(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.answer("❌ Добавление задачи отменено")
+    await callback.answer()
 
 
 @router.message(TaskStates.add_task)

@@ -1,6 +1,7 @@
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from datetime import datetime, date
 from database.session import get_session
 from database.models import Birthday
@@ -14,12 +15,24 @@ class BirthdayStates(StatesGroup):
 
 @router.message(F.text == "/add_birthday")
 async def cmd_add_birthday(message: types.Message, state: FSMContext):
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="❌ Отмена", callback_data="cancel_add_birthday")
+    keyboard.adjust(1)
+
     await message.answer(
         "Введите день рождения в формате:\n"
         "Имя - ДД.ММ\n\n"
-        "Пример: Иван - 15.05"
+        "Пример: Иван - 15.05",
+        reply_markup=keyboard.as_markup()
     )
     await state.set_state(BirthdayStates.add_birthday)
+
+
+@router.callback_query(F.data == "cancel_add_birthday")
+async def cancel_add_birthday(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.answer("❌ Добавление дня рождения отменено")
+    await callback.answer()
 
 
 @router.message(BirthdayStates.add_birthday)

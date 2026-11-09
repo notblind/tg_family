@@ -181,10 +181,15 @@ async def cmd_birthdays_menu(message: types.Message):
 
 @router.callback_query(F.data == "menu_add_birthday")
 async def callback_menu_add_birthday(callback: types.CallbackQuery, state: FSMContext):
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="❌ Отмена", callback_data="cancel_add_birthday")
+    keyboard.adjust(1)
+
     await callback.message.answer(
         "Введите день рождения в формате:\n"
         "Имя - ДД.ММ\n\n"
-        "Пример: Иван - 15.05"
+        "Пример: Иван - 15.05",
+        reply_markup=keyboard.as_markup()
     )
     await state.set_state(BirthdayStates.add_birthday)
     await callback.answer()
@@ -226,11 +231,16 @@ async def cmd_tasks_menu(message: types.Message):
 
 @router.callback_query(F.data == "menu_add_task")
 async def callback_menu_add_task(callback: types.CallbackQuery, state: FSMContext):
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="❌ Отмена", callback_data="cancel_add_task")
+    keyboard.adjust(1)
+
     await callback.message.answer(
         "Введите задачу в формате:\n"
         "Текст задачи - ДД.ММ ЧЧ:ММ\n\n"
         "Пример: Купить продукты - 25.10 18:00\n\n"
-        "Если дедлайна нет, просто введите текст задачи."
+        "Если дедлайна нет, просто введите текст задачи.",
+        reply_markup=keyboard.as_markup()
     )
     await state.set_state(TaskStates.add_task)
     await callback.answer()
@@ -272,6 +282,10 @@ async def cmd_pills_menu(message: types.Message):
 
 @router.callback_query(F.data == "menu_add_pill")
 async def callback_menu_add_pill(callback: types.CallbackQuery, state: FSMContext):
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="❌ Отмена", callback_data="cancel_add_pill")
+    keyboard.adjust(1)
+
     await callback.message.answer(
         "Введите напоминание в формате:\n"
         "Название - ЧЧ:ММ\n"
@@ -280,7 +294,8 @@ async def callback_menu_add_pill(callback: types.CallbackQuery, state: FSMContex
         "Примеры:\n"
         "Витамин C - 09:00 (ежедневно)\n"
         "Витамин C - 09:00 - Пн Вт Ср Чт Пт (рабочие дни)\n\n"
-        "Дни недели: Пн Вт Ср Чт Пт Сб Вс (через пробел)"
+        "Дни недели: Пн Вт Ср Чт Пт Сб Вс (через пробел)",
+        reply_markup=keyboard.as_markup()
     )
     await state.set_state(PillStates.add_pill)
     await callback.answer()

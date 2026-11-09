@@ -17,6 +17,10 @@ class PillStates(StatesGroup):
 
 @router.message(F.text == "/add_pill")
 async def cmd_add_pill(message: types.Message, state: FSMContext):
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="❌ Отмена", callback_data="cancel_add_pill")
+    keyboard.adjust(1)
+
     await message.answer(
         "Введите напоминание в формате:\n"
         "Название - ЧЧ:ММ\n"
@@ -25,9 +29,17 @@ async def cmd_add_pill(message: types.Message, state: FSMContext):
         "Примеры:\n"
         "Витамин C - 09:00 (ежедневно)\n"
         "Витамин C - 09:00 - Пн Вт Ср Чт Пт (рабочие дни)\n\n"
-        "Дни недели: Пн Вт Ср Чт Пт Сб Вс (через пробел)"
+        "Дни недели: Пн Вт Ср Чт Пт Сб Вс (через пробел)",
+        reply_markup=keyboard.as_markup()
     )
     await state.set_state(PillStates.add_pill)
+
+
+@router.callback_query(F.data == "cancel_add_pill")
+async def cancel_add_pill(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.answer("❌ Добавление напоминания отменено")
+    await callback.answer()
 
 
 @router.message(PillStates.add_pill)
