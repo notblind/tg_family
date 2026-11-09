@@ -1,5 +1,6 @@
 from aiogram import Router, F, types
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from datetime import datetime, date
 from database.session import get_session
 from database.models import Birthday
@@ -82,24 +83,24 @@ async def cmd_upcoming_birthdays(message: types.Message):
         from sqlalchemy import select
         result = await session.execute(select(Birthday).order_by(Birthday.date))
         birthdays = result.scalars().all()
-    
+
     # Find birthdays in next 30 days
     upcoming = []
     for b in birthdays:
         birthday_this_year = date(today.year, b.date.month, b.date.day)
         if birthday_this_year < today:
             birthday_this_year = date(today.year + 1, b.date.month, b.date.day)
-        
+
         days_until = (birthday_this_year - today).days
         if 0 <= days_until <= 30:
             upcoming.append((b, days_until))
-    
+
     upcoming.sort(key=lambda x: x[1])
-    
+
     if not upcoming:
         await message.answer("Ближайших дней рождения нет (в ближайшие 30 дней)")
         return
-    
+
     text = "📅 Ближайшие дни рождения:\n\n"
     for b, days in upcoming:
         if days == 0:
@@ -108,64 +109,5 @@ async def cmd_upcoming_birthdays(message: types.Message):
             text += f"🎂 {b.name} - Завтра\n"
         else:
             text += f"📅 {b.name} - через {days} дней\n"
-    
-    await message.answer(text)
 
-
-@router.message(F.text == "/birthdays")
-async def cmd_birthdays(message: types.Message):
-    async with get_session() as session:
-        from sqlalchemy import select
-        result = await session.execute(select(Birthday).order_by(Birthday.date))
-        birthdays = result.scalars().all()
-    
-    if not birthdays:
-        await message.answer("Список дней рождения пуст")
-        return
-    
-    text = "📅 Дни рождения:\n\n"
-    for b in birthdays:
-        category_emoji = "👨‍👩‍👧‍👦" if b.category == BirthdayCategory.FAMILY else "👥"
-        text += f"{category_emoji} {b.name} - {b.date.strftime('%d.%m')}"
-        if b.note:
-            text += f" ({b.note})"
-        text += "\n"
-    
-    await message.answer(text, parse_mode="HTML")
-
-
-@router.message(F.text == "/upcoming_birthdays")
-async def cmd_upcoming_birthdays(message: types.Message):
-    today = date.today()
-    async with get_session() as session:
-        from sqlalchemy import select
-        result = await session.execute(select(Birthday).order_by(Birthday.date))
-        birthdays = result.scalars().all()
-    
-    # Find birthdays in next 30 days
-    upcoming = []
-    for b in birthdays:
-        birthday_this_year = date(today.year, b.date.month, b.date.day)
-        if birthday_this_year < today:
-            birthday_this_year = date(today.year + 1, b.date.month, b.date.day)
-        
-        days_until = (birthday_this_year - today).days
-        if 0 <= days_until <= 30:
-            upcoming.append((b, days_until))
-    
-    upcoming.sort(key=lambda x: x[1])
-    
-    if not upcoming:
-        await message.answer("Ближайших дней рождения нет (в ближайшие 30 дней)")
-        return
-    
-    text = "📅 Ближайшие дни рождения:\n\n"
-    for b, days in upcoming:
-        if days == 0:
-            text += f"🎉 {b.name} - СЕГОДНЯ!\n"
-        elif days == 1:
-            text += f"🎂 {b.name} - Завтра\n"
-        else:
-            text += f"📅 {b.name} - через {days} дней\n"
-    
     await message.answer(text)
