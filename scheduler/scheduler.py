@@ -8,14 +8,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Support both PostgreSQL and SQLite for job store
-db_url = settings.database_url
-if db_url.startswith("postgresql://"):
-    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+# Use synchronous database URL for APScheduler job store
+# APScheduler doesn't support async drivers for job stores
+jobstore_url = settings.database_url
+if jobstore_url.startswith("postgresql+asyncpg://"):
+    jobstore_url = jobstore_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 
 # Configure job store
 jobstores = {
-    "default": SQLAlchemyJobStore(url=db_url)
+    "default": SQLAlchemyJobStore(url=jobstore_url)
 }
 
 # Configure executor
