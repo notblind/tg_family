@@ -104,9 +104,8 @@ async def cmd_tasks(message: types.Message):
             text += f"📌 {task.text} (без дедлайна)\n"
 
         keyboard.button(text=f"✅ {task.text[:20]}...", callback_data=f"complete_task_{task.id}")
-        keyboard.button(text=f"❌ {task.text[:20]}...", callback_data=f"delete_task_{task.id}")
 
-    keyboard.adjust(2)
+    keyboard.adjust(1)
 
     await message.answer(text, reply_markup=keyboard.as_markup())
 
@@ -190,23 +189,3 @@ async def cmd_delete_task(message: types.Message):
                 await message.answer("Задача не найдена")
     except (ValueError, IndexError):
         await message.answer("Неверный формат команды")
-
-
-@router.callback_query(F.data.startswith("delete_task_"))
-async def callback_delete_task(callback: types.CallbackQuery):
-    try:
-        task_id = int(callback.data.split("_")[-1])
-        async with get_session() as session:
-            from sqlalchemy import select
-            result = await session.execute(select(Task).where(Task.id == task_id))
-            task = result.scalar_one_or_none()
-
-            if task:
-                await session.delete(task)
-                await session.commit()
-                await callback.message.edit_text(f"🗑️ Задача удалена: {task.text}")
-            else:
-                await callback.answer("Задача не найдена")
-    except (ValueError, IndexError):
-        await callback.answer("Неверный формат")
-    await callback.answer()
