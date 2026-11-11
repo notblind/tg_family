@@ -85,14 +85,15 @@ async def cmd_tasks(message: types.Message):
             select(Task).where(Task.is_completed == False).order_by(Task.deadline)
         )
         tasks = result.scalars().all()
-    
+
     if not tasks:
         await message.answer("Список задач пуст")
         return
-    
+
+    keyboard = InlineKeyboardBuilder()
     text = "📋 Задачи:\n\n"
     now = datetime.now()
-    
+
     for task in tasks:
         if task.deadline:
             if task.deadline < now:
@@ -101,8 +102,13 @@ async def cmd_tasks(message: types.Message):
                 text += f"📌 {task.text} (до {task.deadline.strftime('%d.%m %H:%M')})\n"
         else:
             text += f"📌 {task.text} (без дедлайна)\n"
-    
-    await message.answer(text)
+
+        keyboard.button(text=f"✅ {task.text[:20]}...", callback_data=f"complete_task_{task.id}")
+        keyboard.button(text=f"❌ {task.text[:20]}...", callback_data=f"delete_task_{task.id}")
+
+    keyboard.adjust(2)
+
+    await message.answer(text, reply_markup=keyboard.as_markup())
 
 
 @router.message(F.text == "/tasks_all")
@@ -136,7 +142,7 @@ async def cmd_complete_task(message: types.Message):
             from sqlalchemy import select
             result = await session.execute(select(Task).where(Task.id == task_id))
             task = result.scalar_one_or_none()
-            
+
             if task:
                 task.is_completed = True
                 await session.commit()
@@ -147,6 +153,26 @@ async def cmd_complete_task(message: types.Message):
         await message.answer("Неверный формат команды")
 
 
+@router.callback_query(F.data.startswith("complete_task_"))
+async def callback_complete_task(callback: types.CallbackQuery):
+    try:
+        task_id = int(callback.data.split("_")[-1])
+        async with get_session() as session:
+            from sqlalchemy import select
+            result = await session.execute(select(Task).where(Task.id == task_id))
+            task = result.scalar_one_or_none()
+
+            if task:
+                task.is_completed = True
+                await session.commit()
+                await callback.message.edit_text(f"✅ Задача выполнена: {task.text}")
+            else:
+                await callback.answer("Задача не найдена")
+    except (ValueError, IndexError):
+        await callback.answer("Неверный формат")
+    await callback.answer()
+
+
 @router.message(F.text.startswith("/delete_task_"))
 async def cmd_delete_task(message: types.Message):
     try:
@@ -155,7 +181,7 @@ async def cmd_delete_task(message: types.Message):
             from sqlalchemy import select, delete
             result = await session.execute(select(Task).where(Task.id == task_id))
             task = result.scalar_one_or_none()
-            
+
             if task:
                 await session.delete(task)
                 await session.commit()
@@ -164,3 +190,23 @@ async def cmd_delete_task(message: types.Message):
                 await message.answer("Задача не найдена")
     except (ValueError, IndexError):
         await message.answer("Неверный формат команды")
+
+
+@router.callback_query(F.data.startswith("delete_task_"))
+async def callback_delete_task(callback: types.CallbackQuery):
+    try:
+        task_id = int(callback.data.split("_")[-1])
+        async with get_session() as session:
+            from sqlalchemy import select
+            result = await session.execute(select(Task).where(Task.id == task_id))
+            task = result.scalar_one_or_none()
+
+            if task:
+                await session.delete(task)
+                await session.commit()
+                await callback.message.edit_text(f"🗑️ Задача удалена: {task.text}")
+            else:
+                await callback.answer("Задача не найдена")
+    except (ValueError, IndexError):
+        await callback.answer("Неверный формат")
+    await callback.answer()

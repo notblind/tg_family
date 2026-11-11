@@ -18,9 +18,8 @@ async def cmd_menu(message: types.Message):
     keyboard.button(text="📋 Дела")
     keyboard.button(text="💊 Таблетки")
     keyboard.button(text="⚙️ Настройки")
-    keyboard.button(text="❓ FAQ")
     keyboard.adjust(2)
-    
+
     await message.answer(
         "🏠 Главное меню",
         reply_markup=keyboard.as_markup(resize_keyboard=True)
