@@ -235,20 +235,66 @@ async def callback_menu_add_task(callback: types.CallbackQuery, state: FSMContex
     keyboard.adjust(1)
 
     await callback.message.answer(
-        "Введите задачу в формате:\n"
-        "Текст задачи - ДД.ММ ЧЧ:ММ\n\n"
-        "Пример: Купить продукты - 25.10 18:00\n\n"
-        "Если дедлайна нет, просто введите текст задачи.",
+        "Введите название задачи:",
         reply_markup=keyboard.as_markup()
     )
-    await state.set_state(TaskStates.add_task)
+    await state.set_state(TaskStates.add_task_name)
     await callback.answer()
 
 
-@router.message(TaskStates.add_task)
-async def process_add_task_from_menu(message: types.Message, state: FSMContext):
-    from handlers.tasks import process_add_task
-    await process_add_task(message, state)
+@router.message(TaskStates.add_task_name)
+async def process_add_task_name_from_menu(message: types.Message, state: FSMContext):
+    from handlers.tasks import process_add_task_name
+    await process_add_task_name(message, state)
+
+
+@router.callback_query(F.data == "task_no_deadline")
+async def callback_task_no_deadline(callback: types.CallbackQuery, state: FSMContext):
+    from handlers.tasks import callback_task_no_deadline
+    await callback_task_no_deadline(callback, state)
+
+
+@router.callback_query(F.data == "task_deadline_today")
+async def callback_task_deadline_today(callback: types.CallbackQuery, state: FSMContext):
+    from handlers.tasks import callback_task_deadline_today
+    await callback_task_deadline_today(callback, state)
+
+
+@router.callback_query(F.data == "task_deadline_tomorrow")
+async def callback_task_deadline_tomorrow(callback: types.CallbackQuery, state: FSMContext):
+    from handlers.tasks import callback_task_deadline_tomorrow
+    await callback_task_deadline_tomorrow(callback, state)
+
+
+@router.callback_query(F.data == "task_deadline_3days")
+async def callback_task_deadline_3days(callback: types.CallbackQuery, state: FSMContext):
+    from handlers.tasks import callback_task_deadline_3days
+    await callback_task_deadline_3days(callback, state)
+
+
+@router.callback_query(F.data == "task_deadline_week")
+async def callback_task_deadline_week(callback: types.CallbackQuery, state: FSMContext):
+    from handlers.tasks import callback_task_deadline_week
+    await callback_task_deadline_week(callback, state)
+
+
+@router.callback_query(F.data == "task_deadline_custom")
+async def callback_task_deadline_custom(callback: types.CallbackQuery, state: FSMContext):
+    from handlers.tasks import callback_task_deadline_custom
+    await callback_task_deadline_custom(callback, state)
+
+
+@router.message(TaskStates.add_task_deadline)
+async def process_add_task_deadline_from_menu(message: types.Message, state: FSMContext):
+    from handlers.tasks import process_add_task_deadline
+    await process_add_task_deadline(message, state)
+
+
+@router.callback_query(F.data == "cancel_add_task")
+async def cancel_add_task(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.answer("❌ Добавление задачи отменено")
+    await callback.answer()
 
 
 @router.callback_query(F.data == "menu_tasks")

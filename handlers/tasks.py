@@ -11,7 +11,8 @@ router = Router()
 
 
 class TaskStates(StatesGroup):
-    add_task = State()
+    add_task_name = State()
+    add_task_deadline = State()
 
 
 @router.message(F.text == "/add_task")
@@ -21,59 +22,151 @@ async def cmd_add_task(message: types.Message, state: FSMContext):
     keyboard.adjust(1)
 
     await message.answer(
-        "Введите задачу в формате:\n"
-        "Текст задачи - ДД.ММ ЧЧ:ММ\n\n"
-        "Пример: Купить продукты - 25.10 18:00\n\n"
-        "Если дедлайна нет, просто введите текст задачи.",
+        "Введите название задачи:",
         reply_markup=keyboard.as_markup()
     )
-    await state.set_state(TaskStates.add_task)
+    await state.set_state(TaskStates.add_task_name)
 
 
-@router.callback_query(F.data == "cancel_add_task")
-async def cancel_add_task(callback: types.CallbackQuery, state: FSMContext):
+@router.message(TaskStates.add_task_name)
+async def process_add_task_name(message: types.Message, state: FSMContext):
+    task_name = message.text.strip()
+    if not task_name:
+        await message.answer("Название задачи не может быть пустым")
+        return
+
+    await state.update_data(task_name=task_name)
+
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="Без дедлайна", callback_data="task_no_deadline")
+    keyboard.button(text="Сегодня", callback_data="task_deadline_today")
+    keyboard.button(text="Завтра", callback_data="task_deadline_tomorrow")
+    keyboard.button(text="Через 3 дня", callback_data="task_deadline_3days")
+    keyboard.button(text="Через неделю", callback_data="task_deadline_week")
+    keyboard.button(text="Выбрать дату", callback_data="task_deadline_custom")
+    keyboard.button(text="❌ Отмена", callback_data="cancel_add_task")
+    keyboard.adjust(2)
+
+    await message.answer(
+        f"Задача: {task_name}\n\n"
+        "Выберите дедлайн:",
+        reply_markup=keyboard.as_markup()
+    )
+    await state.set_state(TaskStates.add_task_deadline)
+
+
+@router.callback_query(F.data == "task_no_deadline")
+async def callback_task_no_deadline(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    task_name = data["task_name"]
+
+    async with get_session() as session:
+        task = Task(text=task_name, deadline=None)
+        session.add(task)
+        await session.commit()
+
     await state.clear()
-    await callback.message.answer("❌ Добавление задачи отменено")
+    await callback.message.edit_text(f"✅ Задача добавлена: {task_name} (без дедлайна)")
     await callback.answer()
 
 
-@router.message(TaskStates.add_task)
-async def process_add_task(message: types.Message, state: FSMContext):
+@router.callback_query(F.data == "task_deadline_today")
+async def callback_task_deadline_today(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    task_name = data["task_name"]
+    deadline = datetime.now().replace(hour=23, minute=59, second=0, microsecond=0)
+
+    async with get_session() as session:
+        task = Task(text=task_name, deadline=deadline)
+        session.add(task)
+        await session.commit()
+
+    await state.clear()
+    await callback.message.edit_text(f"✅ Задача добавлена: {task_name} (до {deadline.strftime('%d.%m %H:%M')})")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "task_deadline_tomorrow")
+async def callback_task_deadline_tomorrow(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    task_name = data["task_name"]
+    from datetime import timedelta
+    deadline = (datetime.now() + timedelta(days=1)).replace(hour=23, minute=59, second=0, microsecond=0)
+
+    async with get_session() as session:
+        task = Task(text=task_name, deadline=deadline)
+        session.add(task)
+        await session.commit()
+
+    await state.clear()
+    await callback.message.edit_text(f"✅ Задача добавлена: {task_name} (до {deadline.strftime('%d.%m %H:%M')})")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "task_deadline_3days")
+async def callback_task_deadline_3days(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    task_name = data["task_name"]
+    from datetime import timedelta
+    deadline = (datetime.now() + timedelta(days=3)).replace(hour=23, minute=59, second=0, microsecond=0)
+
+    async with get_session() as session:
+        task = Task(text=task_name, deadline=deadline)
+        session.add(task)
+        await session.commit()
+
+    await state.clear()
+    await callback.message.edit_text(f"✅ Задача добавлена: {task_name} (до {deadline.strftime('%d.%m %H:%M')})")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "task_deadline_week")
+async def callback_task_deadline_week(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    task_name = data["task_name"]
+    from datetime import timedelta
+    deadline = (datetime.now() + timedelta(days=7)).replace(hour=23, minute=59, second=0, microsecond=0)
+
+    async with get_session() as session:
+        task = Task(text=task_name, deadline=deadline)
+        session.add(task)
+        await session.commit()
+
+    await state.clear()
+    await callback.message.edit_text(f"✅ Задача добавлена: {task_name} (до {deadline.strftime('%d.%m %H:%M')})")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "task_deadline_custom")
+async def callback_task_deadline_custom(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_text(
+        "Введите дедлайн в формате ДД.ММ ЧЧ:ММ\n\n"
+        "Пример: 25.10 18:00"
+    )
+    await callback.answer()
+
+
+@router.message(TaskStates.add_task_deadline)
+async def process_add_task_deadline(message: types.Message, state: FSMContext):
     try:
-        # Check if there's a deadline
-        if ' - ' in message.text:
-            parts = message.text.split(' - ')
-            text = parts[0].strip()
-            deadline_str = parts[1].strip()
-            
-            try:
-                deadline = datetime.strptime(deadline_str, "%d.%m %H:%M")
-                deadline = deadline.replace(year=datetime.now().year)
-            except ValueError:
-                await message.answer(
-                    "Неверный формат дедлайна. Используйте ДД.ММ ЧЧ:ММ\n\n"
-                    "Пример: Купить продукты - 25.10 18:00"
-                )
-                return
-        else:
-            text = message.text.strip()
-            deadline = None
-        
+        deadline_str = message.text.strip()
+        deadline = datetime.strptime(deadline_str, "%d.%m %H:%M")
+        deadline = deadline.replace(year=datetime.now().year)
+
+        data = await state.get_data()
+        task_name = data["task_name"]
+
         async with get_session() as session:
-            task = Task(
-                text=text,
-                deadline=deadline
-            )
+            task = Task(text=task_name, deadline=deadline)
             session.add(task)
             await session.commit()
-        
-        deadline_text = deadline.strftime("%d.%m %H:%M") if deadline else "без дедлайна"
-        await message.answer(f"✅ Задача добавлена: {text} (дедлайн: {deadline_text})")
+
         await state.clear()
-    except Exception as e:
+        await message.answer(f"✅ Задача добавлена: {task_name} (до {deadline.strftime('%d.%m %H:%M')})")
+    except ValueError:
         await message.answer(
-            "Неверный формат. Используйте: Текст задачи - ДД.ММ ЧЧ:ММ\n\n"
-            "Или просто текст задачи без дедлайна."
+            "Неверный формат. Используйте ДД.ММ ЧЧ:ММ\n\n"
+            "Пример: 25.10 18:00"
         )
 
 
